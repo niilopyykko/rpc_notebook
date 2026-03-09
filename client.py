@@ -1,5 +1,4 @@
 import xmlrpc.client
-import datetime
 
 def main():
     proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
@@ -48,12 +47,16 @@ def add_topic(proxy):
 def get_topic(proxy):
     title = input("Topic name to fetch: ")
     data = proxy.get_topic(title)
-    print(f"\nTopic: {data["title"]}")
+    if not data:
+        print("Topic not found.\n")
+        return
+
+    print(f"\nTopic: {data['title']}")
     print("Notes: ")
     for note in data["notes"]:
-        print(f"    Note: {note["name"]}")
-        print(f"    Text: {note["text"]}")
-        print(f"    Time: {note["timestamp"]}\n")
+        print(f"    Note: {note['name']}")
+        print(f"    Text: {note['text']}")
+        print(f"    Time: {note['timestamp']}\n")
     return
 
 def list_topics(proxy):

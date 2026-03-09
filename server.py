@@ -7,6 +7,7 @@ from socketserver import ThreadingMixIn
 
 class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     daemon_threads = True
+    request_queue_size = 200
 
 # Thread safety lock for XML operations
 xml_lock = threading.Lock()
