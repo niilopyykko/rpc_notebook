@@ -18,55 +18,66 @@ xml_lock = threading.Lock()
 
 def add_topic(topic_data):
     with xml_lock:
-        print(f"incoming data: {topic_data}")
+        try:
+            print(f"incoming data: {topic_data}")
 
-        title = topic_data["title"]
-        note_name = topic_data["note_name"]
-        text = topic_data["text"]
-        
-        # timestamp is generated here so the server time is used, not client time.
-        # clients could have wrong clocks or be in different timezones.
-        timestamp = datetime.datetime.now().strftime("%y/%m/%d - %H:%M:%S")
-        
-        existing = search_tree(title)
-        if existing is not None:
-            # topic already exists, just append a new note under it
-            note = ET.SubElement(existing, "note")
-            note.set("name",note_name)
-            ET.SubElement(note, "text").text = text
-            ET.SubElement(note, "timestamp").text = timestamp
-        elif root is not None:
-            # first note under this topic, create the topic element first            
-            topic_element = ET.SubElement(root, "topic")
-            topic_element.set("name", title)
-            note = ET.SubElement(topic_element, "note")
-            note.set("name", note_name)
-            ET.SubElement(note, "text").text = text
-            ET.SubElement(note, "timestamp").text = timestamp
+            title = topic_data["title"]
+            note_name = topic_data["note_name"]
+            text = topic_data["text"]
             
-        write_xml_to_file()
-        return True # xmlrpc requires a return value, None would cause an error
+            # timestamp is generated here so the server time is used, not client time.
+            # clients could have wrong clocks or be in different timezones.
+            timestamp = datetime.datetime.now().strftime("%y/%m/%d - %H:%M:%S")
+            
+            existing = search_tree(title)
+            if existing is not None:
+                # topic already exists, just append a new note under it
+                note = ET.SubElement(existing, "note")
+                note.set("name",note_name)
+                ET.SubElement(note, "text").text = text
+                ET.SubElement(note, "timestamp").text = timestamp
+            elif root is not None:
+                # first note under this topic, create the topic element first            
+                topic_element = ET.SubElement(root, "topic")
+                topic_element.set("name", title)
+                note = ET.SubElement(topic_element, "note")
+                note.set("name", note_name)
+                ET.SubElement(note, "text").text = text
+                ET.SubElement(note, "timestamp").text = timestamp
+                
+            write_xml_to_file()
+            return {"status": "ok", "data": {}}
+        except Exception as e:
+            print(f"add_topic failed: {e}")
+            return {"status": "error", "data": {"error": str(e)}}
+
 
 def list_topics():
     with xml_lock:
-        if root is not None:
-            return [topic.get("name") for topic in root.findall("topic")]
-        else: 
-            return [] # signals "not found" to the client
+        try:
+            if root is not None:
+                return {"status": "ok", "data": {"topics": [topic.get("name") for topic in root.findall("topic")]}}
+            return {"status": "ok", "data": {"topics": []}}
+        except Exception as e:
+            return {"status": "error", "data": {"error": str(e)}}
 
 def get_topic(title):
     with xml_lock:
-        topic_element = search_tree(title)
-        if topic_element is None:
-            return {} # signals "not found" to the client
-        notes = []
-        for note in topic_element.findall("note"):
-            notes.append({
-                "name": note.get("name", ""),
-                "text": note.findtext("text", ""),
-                "timestamp": note.findtext("timestamp", "")
-            })
-        return {"title": title, "notes": notes}
+        try:
+            topic_element = search_tree(title)
+            if topic_element is None:
+                return {} # signals "not found" to the client
+            notes = []
+            for note in topic_element.findall("note"):
+                notes.append({
+                    "name": note.get("name", ""),
+                    "text": note.findtext("text", ""),
+                    "timestamp": note.findtext("timestamp", "")
+                })
+            return {"status": "ok", "data": {"title": title, "notes": notes}}
+        except Exception as e:
+            return {"status": "error", "data": {"error": str(e)}}
+            
 
 ##### server internal functions (not registered as RPC endpoints) ######
 

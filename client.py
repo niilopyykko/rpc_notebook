@@ -15,17 +15,21 @@ def main_menu(proxy):
         print("2) Get topic")
         print("0) Exit\n")
 
-        user_input = int(input("pelase give me input: "))
+        user_input = int(input("Choose action: "))
         print("")
         if user_input == 0:
             exit()
         elif user_input == 1:
+            list_topics(proxy)
+            print("Choose from existing or add new\n")
             add_topic(proxy) 
         
         elif user_input == 2:
             # list first so user knows what topics exist before typing one
-            list_topics(proxy)
-            get_topic(proxy)
+            if list_topics(proxy):
+                get_topic(proxy)
+            else:
+                print("no topics\n")
         else:
             print("option does not exist, try again\n")
     
@@ -40,20 +44,21 @@ def add_topic(proxy):
         "text": text
         # timestamp is server generated
     }
-
-    proxy.add_topic(topic_data)
+    
+    data = call_server(proxy.add_topic, topic_data)
+    if data is None:
+        return
     print("Topic added.\n")
     return
 
 
 def get_topic(proxy):
     title = input("Topic name to fetch: ")
-    data = proxy.get_topic(title)
-    if not data:
-        print("Topic not found.\n")
+    data = call_server(proxy.get_topic, title)
+    if data is None:
         return
-
-    print(f"\nTopic: {data['title']}")
+    
+    print(f"\nTopic: {data["title"]}")
     print("Notes: ")
     for note in data["notes"]:
         print(f"===={note['name']}====")
@@ -63,12 +68,33 @@ def get_topic(proxy):
     return
 
 def list_topics(proxy):
-    print("#### Available topics ####\n")
-    topics_list = proxy.list_topics()
-    for topic in topics_list:
-        print(topic)
-    print("\n#### Available topics ####\n")
-    return
+    data = call_server(proxy.list_topics)
+    if data is None:
+        return
+    if data["topics"]:
+        print("#### Available topics ####\n")
+        for topic in data["topics"]:
+            print(topic)
+        print("\n#### Available topics ####\n")
+        return True
+    return False
+
+def call_server(func, *args):
+    # *args passes any arguments through to the rpc function
+    try:
+        response: dict = func(*args)
+    except Exception as e:
+        print(f"no response from server: {e}")
+        return None
+
+    status: str = response["status"]
+    data: dict = response["data"]
+
+    if status == "error":
+        print(f"error: {data}")
+        return None
+
+    return data  # None if not found, dict if ok
 
 
 if __name__ == "__main__":
