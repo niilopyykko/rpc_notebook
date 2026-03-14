@@ -32,6 +32,10 @@ def add_topic(topic_data):
             existing = search_tree(title)
             if existing is not None:
                 # topic already exists, just append a new note under it
+                # check if note name already exists under this topic
+                for note in existing.findall("note"):
+                    if note.get("name") == note_name:
+                        return {"status": "error", "data": {"error": f"note '{note_name}' already exists under '{title}'\n"}}
                 note = ET.SubElement(existing, "note")
                 note.set("name",note_name)
                 ET.SubElement(note, "text").text = text
@@ -66,7 +70,7 @@ def get_topic(title):
         try:
             topic_element = search_tree(title)
             if topic_element is None:
-                return {} # signals "not found" to the client
+                return {"status": "ok", "data": {}}  # empty dict signals "not found" to client
             notes = []
             for note in topic_element.findall("note"):
                 notes.append({

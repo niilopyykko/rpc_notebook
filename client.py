@@ -35,8 +35,21 @@ def main_menu(proxy):
     
 def add_topic(proxy):
     title = input("Topic name: ")
+    
+    # if topic exists, show existing notes so user knows what names are taken
+    existing = call_server(proxy.get_topic, title)
+    if existing and "notes" in existing:
+        print(f"existing notes under '{title}':")
+        for note in existing["notes"]:
+            print(f"  {note['name']}")
+        print()
+
     note_name = input("Note title: ")
     text = input("Note text: ")
+    
+    if not title.strip() or not note_name.strip() or not text.strip():
+        print("fields cannot be empty\n")
+        return
 
     topic_data = {
         "title": title,
@@ -55,7 +68,10 @@ def add_topic(proxy):
 def get_topic(proxy):
     title = input("Topic name to fetch: ")
     data = call_server(proxy.get_topic, title)
-    if data is None:
+    if data is None:  # server error, call_server already printed the error
+        return
+    if not data:  # empty dict, topic does not exist
+        print("Topic not found.\n")
         return
     
     print(f"\nTopic: {data["title"]}")
