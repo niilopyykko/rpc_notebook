@@ -5,6 +5,8 @@ import xml.etree.ElementTree as ET
 import threading
 from socketserver import ThreadingMixIn
 
+# SimpleXMLRPCServer handles one request at a time by default.
+# ThreadingMixIn makes it spawn a new thread per request instead.
 class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     daemon_threads = True
     request_queue_size = 200
@@ -12,7 +14,8 @@ class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
 # Thread safety lock for XML operations
 xml_lock = threading.Lock()
 
-###### public functions ######
+###### public functions (exposed to RPC clients) ######
+
 def add_topic(topic_data):
     with xml_lock:
         print(f"incoming data: {topic_data}")
@@ -20,15 +23,20 @@ def add_topic(topic_data):
         title = topic_data["title"]
         note_name = topic_data["note_name"]
         text = topic_data["text"]
+        
+        # timestamp is generated here so the server time is used, not client time.
+        # clients could have wrong clocks or be in different timezones.
         timestamp = datetime.datetime.now().strftime("%y/%m/%d - %H:%M:%S")
         
         existing = search_tree(title)
         if existing is not None:
+            # topic already exists, just append a new note under it
             note = ET.SubElement(existing, "note")
             note.set("name",note_name)
             ET.SubElement(note, "text").text = text
             ET.SubElement(note, "timestamp").text = timestamp
         elif root is not None:
+            # first note under this topic, create the topic element first            
             topic_element = ET.SubElement(root, "topic")
             topic_element.set("name", title)
             note = ET.SubElement(topic_element, "note")
@@ -37,18 +45,20 @@ def add_topic(topic_data):
             ET.SubElement(note, "timestamp").text = timestamp
             
         write_xml_to_file()
-        return True
+        return True # xmlrpc requires a return value, None would cause an error
 
 def list_topics():
     with xml_lock:
         if root is not None:
             return [topic.get("name") for topic in root.findall("topic")]
+        else: 
+            return [] # signals "not found" to the client
 
 def get_topic(title):
     with xml_lock:
         topic_element = search_tree(title)
         if topic_element is None:
-            return {}
+            return {} # signals "not found" to the client
         notes = []
         for note in topic_element.findall("note"):
             notes.append({
@@ -58,10 +68,7 @@ def get_topic(title):
             })
         return {"title": title, "notes": notes}
 
-##### public functions ######
-
-
-##### server internal functions ######
+##### server internal functions (not registered as RPC endpoints) ######
 
 def search_tree(title):
     if root is not None:

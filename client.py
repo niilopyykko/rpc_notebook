@@ -23,6 +23,7 @@ def main_menu(proxy):
             add_topic(proxy) 
         
         elif user_input == 2:
+            # list first so user knows what topics exist before typing one
             list_topics(proxy)
             get_topic(proxy)
         else:
@@ -37,6 +38,7 @@ def add_topic(proxy):
         "title": title,
         "note_name": note_name,
         "text": text
+        # timestamp is server generated
     }
 
     proxy.add_topic(topic_data)
@@ -54,9 +56,10 @@ def get_topic(proxy):
     print(f"\nTopic: {data['title']}")
     print("Notes: ")
     for note in data["notes"]:
-        print(f"    Note: {note['name']}")
+        print(f"===={note['name']}====")
         print(f"    Text: {note['text']}")
         print(f"    Time: {note['timestamp']}\n")
+        print(f"==================")
     return
 
 def list_topics(proxy):
